@@ -13,17 +13,23 @@ using System.Linq;
 using System.Threading;
 using TransportAPI;
 
+
+
 namespace Elgsis.DP.Tests.Protocols.ModBus
+
 {
+
     class GenericModBusDeviceTests
     {
 
         [TestFixtureSetUp]
+
         public void SetUp()
         {
         }
 
         //[Test]
+
         //public void WhenModBusTemperatureMapProvided_ShouldReturnValidParameter()
         //{
         //    var modBusMap = new ModBusRegistryMap[]
@@ -32,12 +38,9 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
         //            new ModBusDataDescription(0,12),
         //            new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))
         //    };
-
         //    var modbus = new RtuModBusProvider(1, new SenderReceiverSource());
         //    var modBusDevice = new ModBusGenerciDevice(modBusMap, modbus);
-
         //    var parameters = modBusDevice.Parameters;
-
         //    Assert.AreEqual(1, parameters.Length);
         //    var temperature = parameters.Single();
         //    Assert.AreEqual("temperature", temperature.Name);
@@ -46,6 +49,7 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
 
         [Test]
         public void WhenReadTemperature_ShouldReturnResult()
+
         {
             var modBusMap = new ModBusRegistryMap[]
             {
@@ -59,7 +63,7 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
 
             var read = modBusDevice.Send(TimeSpan.FromSeconds(6), CancellationToken.None, new ReadDataCommand(ParameterContext.None));
 
-            read.GetDeepEnumerator()
+            read.GetDeepEnumerator() 
             .ShouldSendBytes("01-03-00-05-00-02-D4-0A".Hex())
             .SetReceiveBytes("01-03-04-41-C2-25-18-55-69".Hex())
             .NextEnd();
@@ -69,10 +73,13 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
             Debug.Print(ModBusHelper.GetSingle(parser, ModBusSingle.HighWordFirst).ToString());
 
             Assert.AreEqual(true, read.Result[0].Succeeded);
+
             //Assert.That(read.Result[0].Result, Is.EqualTo(27.17462).Within(0.0001));
         }
     }
+
     class ModBusGenerciDevice : IDevice
+
     {
         enum TemperatureHumidityMeterAddresses : int
         {
@@ -84,6 +91,7 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
             TemperatureFloat = 0x0005,
             DewPointFloat = 0x0007
         }
+
 
         private readonly IModBusProvider modBusProvider;
         private readonly ModBusRegistryMap[] modBusDataDescriptions;
@@ -102,8 +110,8 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
             }
             //new DeviceData( new ParameterContext(Parameter.Temperature, Context.Instantineous)  DeviceProperty.ParameterType.Double)
         }
-
         // public method
+
         public DeviceProperty[] Parameters
         {
             get
@@ -112,32 +120,48 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
             }
         }
 
-
-
-        private 
-
         public AsyncMethod<DeviceCommand[], DeviceCommandResult[]> Send(TimeSpan timeout, CancellationToken ct, params DeviceCommand[] commands)
         {
             return new AsyncMethod<DeviceCommand[], DeviceCommandResult[]>(SendAsync(timeout, ct, commands), commands);
         }
 
         IEnumerable<IAsync> SendAsync(TimeSpan timeout, CancellationToken ct, params DeviceCommand[] commands)
+
         {
             var commandResultsList = new List<DeviceCommandResult>();
 
             foreach (var dc in commands.OfType<ReadDataCommand>())
             {
-                var read = modBusProvider.ReadAnalogOutputHoldingRegisters(new ReadAOHRRequest((int)TemperatureHumidityMeterAddresses.TemperatureFloat, 2), timeout, ct);
 
+                ModBusRegistryMap tempModBusRegistryMap;
+                foreach (var mbr in modBusDataDescriptions)
+                {
+                    if ((dc.pametercontext.parameter == mbr.parametercontext.parameter) && (dc.pametercontext.context == mbr.parameter.context))
+                    {
+                        tempModBusRegistryMap = mbr;
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Pasirinkto parametro nera")
+                    }
+                }
+
+                var read = modBusProvider.ReadAnalogOutputHoldingRegisters(new ReadAOHRRequest((int)TemperatureHumidityMeterAddresses.TemperatureFloat, 2), timeout, ct);
                 yield return read;
 
                 if (!read.Succeeded)
+
                     yield break;
 
                 commandResultsList.Add(new DeviceCommandResult(dc, read.Result));
             }
             yield return commandResultsList.ToArray().AsResult();
         }
+
+        public float parse()
+        {
+
+        } 
     }
 
     class ModBusDataDescription
@@ -154,10 +178,12 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
             else
                 this.length = length;
         }
+
         public int Adress
         {
             get { return this.adress; }
         }
+
         public int BusType
         {
             get { return (int)this.length; }
@@ -168,10 +194,13 @@ namespace Elgsis.DP.Tests.Protocols.ModBus
     {
         private readonly ModBusDataDescription modBusdataDescription;
         private readonly DeviceData deviceData;
+
         public ModBusRegistryMap(ModBusDataDescription modBusdataDescription, DeviceData deviceData)
         {
             this.modBusdataDescription = modBusdataDescription ?? throw new ArgumentNullException(nameof(modBusdataDescription));
             this.deviceData = deviceData ?? throw new ArgumentNullException(nameof(deviceData));
         }
+
     }
+
 }
