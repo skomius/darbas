@@ -1,206 +1,192 @@
-using Elgsis.Asynchronous;
 using Elgsis.DP.Core;
 using Elgsis.DP.Protocols;
-using Elgsis.DP.Protocols.ModBus;
+using Elgsis.DP.Protocols.Modbus;
+using Elgsis.DP.Protocols.Modbus.Generic;
 using Elgsis.Parameters;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Ports;
-using System.Linq;
 using System.Threading;
-using TransportAPI;
 
-
-
-namespace Elgsis.DP.Tests.Protocols.ModBus
-
+namespace Elgsis.DP.Tests.Protocols.Modbus
 {
-
     class GenericModBusDeviceTests
     {
-
-        [TestFixtureSetUp]
-
-        public void SetUp()
-        {
-        }
-
-        //[Test]
-
-        //public void WhenModBusTemperatureMapProvided_ShouldReturnValidParameter()
-        //{
-        //    var modBusMap = new ModBusRegistryMap[]
-        //    {
-        //        new ModBusRegistryMap(
-        //            new ModBusDataDescription(0,12),
-        //            new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))
-        //    };
-        //    var modbus = new RtuModBusProvider(1, new SenderReceiverSource());
-        //    var modBusDevice = new ModBusGenerciDevice(modBusMap, modbus);
-        //    var parameters = modBusDevice.Parameters;
-        //    Assert.AreEqual(1, parameters.Length);
-        //    var temperature = parameters.Single();
-        //    Assert.AreEqual("temperature", temperature.Name);
-        //    // ...
-        //}
-
         [Test]
-        public void WhenReadTemperature_ShouldReturnResult()
-
+        public void WhenMapPassed_ShouldReturnMappedParameters()
         {
             var modBusMap = new ModBusRegistryMap[]
             {
                 new ModBusRegistryMap(
-                    new ModBusDataDescription(0, 12),
+                    new ModBusDataDescription(0x005, 2),
                     new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))
             };
 
-            var modbus = new RtuModBusProvider(1, new SenderReceiverSource());
-            var modBusDevice = new ModBusGenerciDevice(modBusMap, modbus);
+            var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+            var modBusDevice = new GenericModbusDevice(modBusMap, modbus);
 
-            var read = modBusDevice.Send(TimeSpan.FromSeconds(6), CancellationToken.None, new ReadDataCommand(ParameterContext.None));
+            Assert.AreEqual(1, modBusDevice.Parameters.Length);
+            var deviceData = (DeviceData)modBusDevice.Parameters[0];
 
-            read.GetDeepEnumerator() 
-            .ShouldSendBytes("01-03-00-05-00-02-D4-0A".Hex())
-            .SetReceiveBytes("01-03-04-41-C2-25-18-55-69".Hex())
+            Assert.AreEqual(Parameter.Temperature, deviceData.Parameter.Parameter);
+            Assert.AreEqual(Context.Instantineous, deviceData.Parameter.Context);
+        }
+
+        [Test]
+        public void WhenReadTemperature_ShouldReturnResult()
+        {
+           var modBusMap = new ModBusRegistryMap[]
+           {
+                new ModBusRegistryMap(
+                    new ModBusDataDescription(0x005, 2),
+                    new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))
+           };
+
+            var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+            var modBusDevice = new GenericModbusDevice(modBusMap, modbus);
+
+            var readCmd = new ReadDataCommand(new ParameterContext(Parameter.Temperature, Context.Instantineous));
+
+            var read = modBusDevice.Send(TimeSpan.FromSeconds(6), CancellationToken.None, readCmd);
+
+            read.GetDeepEnumerator()
+                .ShouldSendBytes("01-03-00-05-00-02-D4-0A".Hex())
+                .SetReceiveBytes("01-03-04-41-C2-25-18-55-69".Hex())
             .NextEnd();
 
-            var parser = new PacketParser(((ReadAnswer)read.Result[0].Result).Bytes);
+            Assert.AreEqual(true, read.Result[0].Succeeded);
+            Assert.AreEqual(true, "24.26811".Equals(read.Result[0].Result.ToString()));
+        }
 
-            Debug.Print(ModBusHelper.GetSingle(parser, ModBusSingle.HighWordFirst).ToString());
+        [Test]
+        public void WhenTwoReadCommands_ShouldReturnTowResults()
+        {
+            var modBusMap = new ModBusRegistryMap[]
+            {
+                new ModBusRegistryMap(
+                    new ModBusDataDescription(0x005, 2),
+                    new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))
+            };
+
+            var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+            var modBusDevice = new GenericModbusDevice(modBusMap, modbus);
+
+            var readCmd1 = new ReadDataCommand(new ParameterContext(Parameter.Temperature, Context.Instantineous));
+            var readCmd2 = new ReadDataCommand(new ParameterContext(Parameter.Temperature, Context.Instantineous));
+
+            var read = modBusDevice.Send(TimeSpan.FromSeconds(6), CancellationToken.None, readCmd1, readCmd2);
+
+            read.GetDeepEnumerator()
+                .ShouldSendBytes("01-03-00-05-00-02-D4-0A".Hex())
+                .SetReceiveBytes("01-03-04-41-C2-25-18-55-69".Hex())
+                .ShouldSendBytes("01-03-00-05-00-02-D4-0A".Hex())
+                .SetReceiveBytes("01-03-04-41-C2-25-18-55-69".Hex())
+            .NextEnd();
 
             Assert.AreEqual(true, read.Result[0].Succeeded);
-
-            //Assert.That(read.Result[0].Result, Is.EqualTo(27.17462).Within(0.0001));
-        }
-    }
-
-    class ModBusGenerciDevice : IDevice
-
-    {
-        enum TemperatureHumidityMeterAddresses : int
-        {
-            HumidityInt = 0x0000,
-            TemperatureInt = 0x0001,
-            DewPoitInt = 0x0002,
-
-            HumidityFloat = 0x0003,
-            TemperatureFloat = 0x0005,
-            DewPointFloat = 0x0007
+            Assert.AreEqual(true, read.Result[1].Succeeded);
         }
 
-
-        private readonly IModBusProvider modBusProvider;
-        private readonly ModBusRegistryMap[] modBusDataDescriptions;
-
-        private static readonly ModBusRegistryMap[] modBusmaps =
-            { new ModBusRegistryMap( new ModBusDataDescription(0, 12), new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))};
-
-        public ModBusGenerciDevice(ModBusRegistryMap[] modBusDataDescriptions, IModBusProvider modBusProvider)
+        [Test]
+        public void WhenEmptyRegistryMapPassed_ParametersAreEmpty()
         {
-            this.modBusProvider = modBusProvider ?? throw new ArgumentNullException(nameof(modBusProvider));
-            this.modBusDataDescriptions = modBusDataDescriptions ?? throw new ArgumentNullException(nameof(modBusDataDescriptions));
+            var modBusMap = new ModBusRegistryMap[] { };
 
-            if (modBusDataDescriptions.Length == 0)
+            var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+            var modBusDevice = new GenericModbusDevice(modBusMap, modbus);
+
+            Assert.AreEqual(0, modBusDevice.Parameters.Length);
+        }
+
+        [Test]
+        public void WhenParameterWasNotInMap_ThrowError()
+        {
+            var modBusMap = new ModBusRegistryMap[] { };
+
+            var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+            var modBusDevice = new GenericModbusDevice(modBusMap, modbus);
+
+            var readCmd = new ReadDataCommand(new ParameterContext(Parameter.Temperature, Context.Instantineous));
+            var read = modBusDevice.Send(TimeSpan.FromSeconds(6), CancellationToken.None, readCmd);
+
+            read.GetDeepEnumerator()
+                .Finish();
+
+            Assert.False(read.Succeeded);
+            Assert.AreEqual("Paramter [Temperature General 89 | Context: Instantineous] was not found in registry map", read.Exception.Message);
+        }
+
+        [Test]
+        public void WhenModbusReadFails_ShouldThrowError()
+        {
+            var modBusMap = new ModBusRegistryMap[]
             {
-                throw new ArgumentException();
-            }
-            //new DeviceData( new ParameterContext(Parameter.Temperature, Context.Instantineous)  DeviceProperty.ParameterType.Double)
-        }
-        // public method
+                new ModBusRegistryMap(
+                    new ModBusDataDescription(0x00300, 2),
+                    new DeviceData(new ParameterContext(Parameter.Temperature, Context.Instantineous), DeviceParameter.ParameterType.Double))
+            };
 
-        public DeviceProperty[] Parameters
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
+            var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+            var modBusDevice = new GenericModbusDevice(modBusMap, modbus);
 
-        public AsyncMethod<DeviceCommand[], DeviceCommandResult[]> Send(TimeSpan timeout, CancellationToken ct, params DeviceCommand[] commands)
-        {
-            return new AsyncMethod<DeviceCommand[], DeviceCommandResult[]>(SendAsync(timeout, ct, commands), commands);
-        }
+            var readCmd1 = new ReadDataCommand(new ParameterContext(Parameter.Temperature, Context.Instantineous));
 
-        IEnumerable<IAsync> SendAsync(TimeSpan timeout, CancellationToken ct, params DeviceCommand[] commands)
+            var read = modBusDevice.Send(TimeSpan.FromSeconds(6), CancellationToken.None, readCmd1);
 
-        {
-            var commandResultsList = new List<DeviceCommandResult>();
+            read.GetDeepEnumerator()
+                .ShouldSendBytes("01-03-03-00-00-02-C4-4F".Hex())
+                .SetReceiveBytes("01-83-02-C0-F1".Hex())
+            .NextEnd();
 
-            foreach (var dc in commands.OfType<ReadDataCommand>())
-            {
-
-                ModBusRegistryMap tempModBusRegistryMap;
-                foreach (var mbr in modBusDataDescriptions)
-                {
-                    if ((dc.pametercontext.parameter == mbr.parametercontext.parameter) && (dc.pametercontext.context == mbr.parameter.context))
-                    {
-                        tempModBusRegistryMap = mbr;
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Pasirinkto parametro nera")
-                    }
-                }
-
-                var read = modBusProvider.ReadAnalogOutputHoldingRegisters(new ReadAOHRRequest((int)TemperatureHumidityMeterAddresses.TemperatureFloat, 2), timeout, ct);
-                yield return read;
-
-                if (!read.Succeeded)
-
-                    yield break;
-
-                commandResultsList.Add(new DeviceCommandResult(dc, read.Result));
-            }
-            yield return commandResultsList.ToArray().AsResult();
+            
+            Assert.False(read.Succeeded); 
+            Assert.AreEqual("Fail to read parameter at adress 768. Error code 2", read.Exception.Message);
         }
 
-        public float parse()
+        [Test]
+        public void ConvertFromJson()
         {
+            var str = @"[
+	          {
+	            ""modBusDataDescription"": {
+	              ""adress"": 5,
+	              ""length"": 2
+	            },
+	            ""deviceData"": {
+	              ""parameter"": ""Temperature"",
+	              ""context"": ""Instantineous"",
+	              ""type"": ""Double""
+	            }
+	          },
+	          {
+	            ""modBusDataDescription"": {
+	              ""adress"": 8,
+	              ""length"": 2
+	            },
+	            ""deviceData"": {
+	              ""parameter"": ""Humidity"",
+	              ""context"": ""Instantineous"",
+	              ""type"": ""Double""
+	            }
+	          }]";
 
-        } 
-    }
+            var mBRMArray = GenericModBusDeviceHelper.ConvertFromJson(str);
 
-    class ModBusDataDescription
-    {
-        private readonly int adress;
-        private readonly int length;
+            Assert.AreEqual(2, mBRMArray.Length);
 
-        public ModBusDataDescription(int adress, int length)
-        {
-            this.adress = adress;
+            Assert.AreEqual(5, mBRMArray[0].ModBusDataDescription.Adress);
+            Assert.AreEqual(8, mBRMArray[1].ModBusDataDescription.Adress);
 
-            if (length == 0)
-                throw new ArgumentException("length can't be zero");
-            else
-                this.length = length;
-        }
+            Assert.AreEqual(2, mBRMArray[0].ModBusDataDescription.Length);
+            Assert.AreEqual(2, mBRMArray[0].ModBusDataDescription.Length);
 
-        public int Adress
-        {
-            get { return this.adress; }
-        }
+            Assert.AreEqual("Temperature", mBRMArray[0].DeviceData.Parameter.Parameter.Name);
+            Assert.AreEqual("Humidity", mBRMArray[1].DeviceData.Parameter.Parameter.Name);
 
-        public int BusType
-        {
-            get { return (int)this.length; }
+            Assert.AreEqual("Instantineous", mBRMArray[0].DeviceData.Parameter.Context.Name);
+            Assert.AreEqual("Instantineous", mBRMArray[1].DeviceData.Parameter.Context.Name);
+
+            Assert.AreEqual("Double", mBRMArray[0].DeviceData.Type);
+            Assert.AreEqual("Double", mBRMArray[1].DeviceData.Type);
         }
     }
-
-    class ModBusRegistryMap
-    {
-        private readonly ModBusDataDescription modBusdataDescription;
-        private readonly DeviceData deviceData;
-
-        public ModBusRegistryMap(ModBusDataDescription modBusdataDescription, DeviceData deviceData)
-        {
-            this.modBusdataDescription = modBusdataDescription ?? throw new ArgumentNullException(nameof(modBusdataDescription));
-            this.deviceData = deviceData ?? throw new ArgumentNullException(nameof(deviceData));
-        }
-
-    }
-
 }
