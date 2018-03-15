@@ -50,16 +50,13 @@ namespace PTalk
             tabEsmbDI.Invoke((MethodInvoker)delegate {
                 selectedTab = (string)tabEsmbDI.SelectedTab.Tag;
             });
-
             
-
-            var genericModBusDevice = new GenericModbusDevice(GenericModBusDeviceHelper.ConvertFromJson(txtParameters.Text), )
-
-            var genericModBusDevice = new GenericModbusDevice(new RtuModbusProvider(slaveId, new SenderReceiverSource()), );
-
             if (selectedTab == "RECORDS")
             {
                 // var read = mbg.Read(jhjkhkhkjh
+                var modbus = new RtuModbusProvider(1, new SenderReceiverSource());
+                var genericModbusDevice = new GenericModbusDevice(GenericModBusDeviceHelper.ConvertFromJson(txtParameters.Text), modbus)
+                var read = modBusDevice.Send(timeout, ct, readCmd);    
 
                 proc.Process((IAsyncSenderReceiver)stream, read);
 
