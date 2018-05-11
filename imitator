@@ -23,11 +23,11 @@ namespace VirtualDevs.Device.Dlms
 
     class ProfileClassImitator : IAttributesHandler
     {
-        private readonly Func<DateTimeOffset> timeSource;
+        private readonly Func<DateTime> timeSource;
         private readonly ITableGenerator tableGenerator;
         private readonly TimeSpan capturePeriod;
         private readonly UInt32 profileEntries;
-        private readonly DateTimeOffset firstEntryTime;
+        private readonly DateTime firstEntryTime;
 
         //private readonly long capturePeriodInTicks;
         //private readonly uint entriesInUse;
@@ -35,11 +35,11 @@ namespace VirtualDevs.Device.Dlms
         //private readonly DateTimeOffset lastCaptureTime;
 
         public ProfileClassImitator(
-            Func<DateTimeOffset> timeSource,
+            Func<DateTime> timeSource,
             ITableGenerator tableGenerator,
             TimeSpan capturePeriod,
             UInt32 profileEntries,
-            DateTimeOffset firstEntryTime
+            DateTime firstEntryTime
             )
         {
             this.tableGenerator = tableGenerator ?? throw new ArgumentNullException(nameof(tableGenerator)); //ITableGenerator
@@ -53,11 +53,17 @@ namespace VirtualDevs.Device.Dlms
             //this.lastCaptureTime = CalcLastCaptureTime(numberOfCaptures, capturePeriodInTicks, timeSource);
             //this.entriesInUse = CalcEntriesInUse(timeSource(), lastCaptureTime, capturePeriod);
         }
-        public Func<DateTimeOffset> TimeSource { get { return timeSource; } }
+        public Func<DateTime> TimeSource { get { return timeSource; } }
 
         public ITableGenerator TableGenerator { get { return tableGenerator; } }
 
-        public string CapturePeriod { get { return capturePeriod.ToString(); } } 
+        public UInt32 CapturePeriod
+        {
+            get
+            {
+                return capturePeriod.Seconds > 0 ? (uint)capturePeriod.Seconds : 0; 
+            }
+        } 
 
         public UInt32 ProfileEntries { get { return profileEntries; } }
 
@@ -83,9 +89,9 @@ namespace VirtualDevs.Device.Dlms
 
         public Data GetCaptureObjects(SelectiveAccess? selective)
         {
-            //Time?
+            //Time? Yes
             var listCapObjDef = new List<CaptureObjectDefinition>();
-            listCapObjDef.Add(new CaptureObjectDefinition(8, ObisCode.Parse("0100010000FF"), 2, 0));
+            //listCapObjDef.Add(new CaptureObjectDefinition(8, ObisCode.Parse("0100010000FF"), 2, 0));
 
             foreach( var col in tableGenerator.GeneratorColumns)
             {
@@ -97,7 +103,7 @@ namespace VirtualDevs.Device.Dlms
 
         public Data GetCapturePeriod(SelectiveAccess? selective)
         {
-            return DataCoder.Encode(capturePeriod.ToString());
+            return DataCoder.Encode(CapturePeriod);
         }
 
         public Data GetprofileEntries(SelectiveAccess? selective)
@@ -107,7 +113,8 @@ namespace VirtualDevs.Device.Dlms
 
         public Data GetEntryInUse(SelectiveAccess? selective)
         {
-            return DataCoder.Encode(tableGenerator.GetEntriesInUse(timeSource(), firstEntryTime, capturePeriod));
+            //return  tableGenerator.GetDataRezults().EntrieInuse
+            return DataCoder.Encode(tableGenerator.GetEntriesInUse(timeSource(), firstEntryTime, capturePeriod, ProfileEntries));
         }
 
         public Data GetData(SelectiveAccess? access)
@@ -118,8 +125,8 @@ namespace VirtualDevs.Device.Dlms
 
             if (entry.FromEntry == 0)
                 return DataCoder.Encode(new Data[] { });
-
-            return tableGenerator.GenerateTable(entry, timeSource(), firstEntryTime, capturePeriod);
+            //tableGenerator.GetDataRezults().GetData()
+            return tableGenerator.GenerateTable(entry, timeSource(), firstEntryTime, capturePeriod, profileEntries);
         }
 
         private void ValidateSelectiveAccess(SelectiveAccess? access)
