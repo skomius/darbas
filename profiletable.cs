@@ -4,87 +4,169 @@ using Elgsis.DP.Protocols.Dlms.Cosem.IC;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using VirtualDevs.Device.Dlms;
 
 namespace Elgsis.Virtual.Device.Dlms
 {
-    class ProfileTable : ITableGenerator
+    //class BillingDataResult
+    //{
+    //    DateTime firstCaptureTime;
+    //    TimeSpan capturePeriod;
+
+    //    public BillingDataResult(DateTime firstTimeCapture, TimeSpan capturePeriod, int numberOfCaptures, int entriesInUse)
+    //    {
+
+    //    }
+
+    //    public Data GenerateTable(EntryDescriptor entry)
+    //    {
+    //        return new Data();
+    //    }
+
+    //    public uint GetEntriesInUse()
+    //    {
+    //        return 0;
+    //    }
+    //}
+
+    class BillingTable2 : BillingTable
+    {
+        public BillingTable2(GeneratorColumn[] generatorColumns) : base(generatorColumns)
+        {
+            
+        }
+
+    }
+
+    class BillingTable : ITableGenerator
     {
         private readonly GeneratorColumn[] generatorColumns;
 
         public GeneratorColumn[] GeneratorColumns { get { return generatorColumns; } }
 
-        public ProfileTable(GeneratorColumn[] generatorColumns)
+        public BillingTable(GeneratorColumn[] generatorColumns)
         {
             this.generatorColumns = generatorColumns ?? throw new ArgumentException(nameof(generatorColumns));
         }
 
-        public Data GenerateTable(EntryDescriptor entry, DateTimeOffset timeSource, DateTimeOffset firstCaptureTime, TimeSpan capturePeriod)
-        { 
+        public Data GenerateTable(EntryDescriptor entry, DateTime timeSource, DateTime firstCaptureTime, TimeSpan capturePeriod, UInt32 profileEntries)
+        {
             var result = new List<Data[]>();
 
-            var capturePeriodInTicks = capturePeriod.Ticks;
+            var lastCaptureDate = GetLastCaptureDate(timeSource, firstCaptureTime, capturePeriod);
+            
+            var entriesInUse = GetEntriesInUse(timeSource, firstCaptureTime, capturePeriod, profileEntries);
 
-            var numberOfCaptures = (int)((timeSource.Subtract(firstCaptureTime).TotalSeconds) / capturePeriod.TotalSeconds);
-            numberOfCaptures = numberOfCaptures - (int)entry.FromEntry + 1;
-            var lastCaptureTime = firstCaptureTime.Add(TimeSpan.FromTicks(numberOfCaptures * capturePeriodInTicks));
+            // new BillingDataResult((DateTime firstTimeCapture, TimeSpan capturePeriod, int numberOfCaptures, int entriesInUse)
 
-            for (int i = 0; i <= entry.ToEntry - entry.FromEntry; i++)
+            var index = (int)(entriesInUse - entry.ToEntry);
+
+            if (entriesInUse < entry.FromEntry)
+                return DataCoder.Encode(new Data[] { });
+
+            var last = entry.ToEntry;
+            if (entriesInUse < entry.ToEntry)
+                last = entriesInUse;
+            else
+                firstCaptureTime = AddTime(firstCaptureTime, index, capturePeriod);
+
+            double seconds = TimeSpan.FromTicks(firstCaptureTime.Ticks).TotalSeconds;
+
+            for (int i = 0; i <= last - entry.FromEntry; i++)
             {
                 result.Add(
-                    Enumerable.Range(0, generatorColumns.Length + 1)
-                        .Select((column) => GenerateValue(column, numberOfCaptures, lastCaptureTime)).ToArray());
+                    Enumerable.Range(0, generatorColumns.Length)
+                        .Select((column) => GenerateValue(column, seconds)).ToArray());
 
-                lastCaptureTime = lastCaptureTime.AddTicks(-capturePeriodInTicks);
-                numberOfCaptures--;
+                firstCaptureTime = AddTime(firstCaptureTime, 1, capturePeriod);
+                //TODO: Gal galima greiciau? 
+                seconds = TimeSpan.FromTicks(firstCaptureTime.Ticks).TotalSeconds;
             }
-            //TODO: Need optimization. Temporary.  
-            result.Reverse();
 
+            //Return billing data rezults
             return DataCoder.Encode(result.ToArray());
-        }        
-
-        private Data GenerateValue(int column, int index, DateTimeOffset captureTime)
+        }
+        
+        private Data GenerateValue(int column, double index)
         {
-            if (column == 0)
-                return DataCoder.Encode(captureTime.ToCosemDateTime());
-            else
-            {
-                var value = generatorColumns[column - 1].func(index);
+                var value = generatorColumns[column].func(index);
                 return DataCoder.Encode(value);
-            }
         }
 
-        public uint GetEntriesInUse(DateTimeOffset timeSource, DateTimeOffset firstCaptureTime, TimeSpan capturePeriod)
+        public uint GetEntriesInUse(DateTime timeSource, DateTime firstCaptureTime, TimeSpan capturePeriod, UInt32 profileEntries)
         {
-            var capturePeriodInTicks = capturePeriod.Ticks;
-            var numberOfCaptures = (int)((timeSource.Subtract(firstCaptureTime).TotalSeconds) / capturePeriod.TotalSeconds);
-            var lastCaptureTime = firstCaptureTime.Add(TimeSpan.FromTicks(numberOfCaptures * capturePeriodInTicks));
+            uint number;
 
-            var diff = lastCaptureTime - firstCaptureTime;
+            if (timeSource < firstCaptureTime)
+                return 0;
 
-            return (uint)(diff.TotalSeconds / capturePeriod.TotalSeconds) + 1;
+            var lastCapture = GetLastCaptureDate(timeSource, firstCaptureTime, capturePeriod);
+            var diff = lastCapture - firstCaptureTime;
 
+            if (capturePeriod.TotalSeconds != 0)
+            {
+                number = (uint)(diff.TotalSeconds / capturePeriod.TotalSeconds + 1);
+                //Problem profile entries
+                return number > profileEntries ? profileEntries : number;
+            }
+
+            number = Count(firstCaptureTime, lastCapture);
+
+            return number > profileEntries ? profileEntries : number;                    
         }
 
+        public DateTime GetLastCaptureDate(DateTime timeSource, DateTime firstCaptureTime, TimeSpan capturePeriod)
+        {
+            var time = firstCaptureTime;
 
-    //    private int CalcNumOfCaptures(long capturePeriodInTicks, Func<DateTimeOffset> timeSource, DateTimeOffset firstEntryTime)
-    //    {
-    //        var numberOfCaptures = (int)((timeSource().Subtract(firstEntryTime).TotalSeconds) / capturePeriodInTicks);
-    //        return numberOfCaptures;
-    //    }
+            if (capturePeriod.TotalHours != 0)
+            {
+                var timeSpan = capturePeriod;
 
-    //    private DateTimeOffset CalcLastCaptureTime(int numberOfCaptures, long capturePeriodInTicks, Func<DateTimeOffset> timeSource)
-    //    {
-    //        return new DateTimeOffset(numberOfCaptures * capturePeriodInTicks, timeSource().Offset);
-    //    }
+                while (time <= timeSource)
+                    time = time.Add(timeSpan);
 
-    //    private uint CalcEntriesInUse(DateTimeOffset lastCapture, DateTimeOffset firstCapture, uint capturePeriod)
-    //    {
-    //        var diff = lastCapture - firstCapture;
-    //        return (uint)diff.TotalSeconds / capturePeriod + 1;
-    //    }
+                return time.Add(-timeSpan);
+            }
+
+            while (time <= timeSource)
+                time = time.AddMonths(1);
+
+            return time.AddMonths(-1);
+        }
+
+        //private DateTime SubstractTime(DateTime captureTime, int count, TimeSpan capturePeriod)
+        //{
+        //    if (capturePeriod.TotalHours != 0)
+        //    {
+        //        return captureTime.Add(-TimeSpan.FromHours(capturePeriod.TotalHours * count));
+        //    }
+
+        //    return captureTime.AddMonths(-count);
+        //}
+
+        private DateTime AddTime(DateTime captureTime, int count, TimeSpan capturePeriod)
+        {
+            if (capturePeriod.TotalHours != 0)
+            {
+                return captureTime.Add(TimeSpan.FromHours(capturePeriod.TotalHours * count));
+            }
+
+            return captureTime.AddMonths(count);
+        }
+
+        public uint Count(DateTime firstCaptureTime, DateTime lastCaptureTime)
+        {
+            var i = firstCaptureTime;
+            uint d = 1;
+
+            while (i < lastCaptureTime)
+            {
+                i = i.AddMonths(1);
+                d++;
+            }
+
+            return d;
+        }
     }
 }
