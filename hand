@@ -1,0 +1,308 @@
+{
+  "0100630100FF": {
+    "generator": "BillingClass",
+    "profileClassImitator": {
+      "timeSource": "now+00:00:00",
+      "capturePeriod":{
+        "interval": "01:00:00",
+        "firstEntryTime": "1/1/2018 00:00:00 AM"
+      },
+      "profileEntries": 500,
+      "columns": [
+          {
+          "captureObject": {
+            "classId": 8,
+            "logicalName": "0000010000FF",
+            "attributeIndex": 2,             
+            "dataIndex": 0
+          },
+          "function": {
+            "name": "Clock",
+            "args": null,
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 1,
+            "logicalName": "0100603E01FF",
+            "attributeIndex": 2,             
+            "dataIndex": 0
+          },
+          "function": {
+            "name": "Status",
+            "args": null,
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "01001F0500FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+          "function": {
+            "name": "ScaledGen",
+            "args": {
+              "func": "sin",
+              "maxValue": 2000,
+              "minValue": 1000,
+              "type": "Int32",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100010500FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "ScaledGen",
+            "args": {
+              "func": "sin",
+              "maxValue": 2000,
+              "minValue": 1000,
+              "type": "Int32",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100020500FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "ScaledGen",
+            "args": {
+              "func": "sin",
+              "maxValue": 2000,
+              "minValue": 1000,
+              "type": "Int32",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100030500FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "ScaledGen",
+            "args": {
+              "func": "sin",
+              "maxValue": 2000,
+              "minValue": 1000,
+              "type": "Int32",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        }, 
+          {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100040500FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "ScaledGen",
+            "args": {
+              "func": "sin",
+              "maxValue": 2000,
+              "minValue": 1000,
+              "type": "Int32",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        }       
+      ]
+    }
+  }, 
+
+  "01006201007E": {
+    "generator": "BillingClass",
+    "profileClassImitator": {
+      "timeSource": "now+00:00:00",
+      "capturePeriod":{
+        "interval": "monthly",
+        "firstEntryTime": "1/1/2017 00:00:00 AM"
+      },
+      "profileEntries": 16,
+      "columns": [
+        {
+          "captureObject": {
+            "classId": 8,
+            "logicalName": "0000010000FF",
+            "attributeIndex": 2,             
+            "dataIndex": 0
+          },
+          "function": {
+            "name": "Clock",
+            "args": null,
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 1,
+            "logicalName": "0100603E03FF",
+            "attributeIndex": 2,             
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "BillingStatus",
+            "args": null,
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100000100FF",
+            "attributeIndex": 2,             
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "BillingCounter",
+            "args": null,
+          }
+        }, 
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100010800FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "Total",
+            "args": {
+              "func": "sin",
+              "maxValue": 0,
+              "minValue": 0,
+              "type": "UInt64",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100010801FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "Total",
+            "args": {
+              "func": "sin",
+              "maxValue": 0,
+              "minValue": 0,
+              "type": "UInt64",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100010802FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "Total",
+            "args": {
+              "func": "sin",
+              "maxValue": 0,
+              "minValue": 0,
+              "type": "UInt64",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100010803FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "Total",
+            "args": {
+              "func": "sin",
+              "maxValue": 0,
+              "minValue": 0,
+              "type": "UInt64",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        },
+        {
+          "captureObject": {
+            "classId": 3,
+            "logicalName": "0100010804FF",
+            "attributeIndex": 2,
+            "dataIndex": 0
+          },
+
+          "function": {
+            "name": "Total",
+            "args": {
+              "func": "sin",
+              "maxValue": 0,
+              "minValue": 0,
+              "type": "UInt64",
+              "length": 1,
+              "Seed": null
+            }
+          }
+        }      
+      ]
+    }
+  },
+
+  "01001F0700FF": {
+    "generator": "Generic",
+    "attributes": [
+      null,
+      {
+        "name": "Instantaneous",
+        "args": {
+          "func": "sin",
+          "maxValue": 2000,
+          "minValue": 1000,
+          "type": "Int32",
+          "length": 1,
+          "seed": "now+00:00:00"
+        }
+      }
+    ]
+  }
+}
